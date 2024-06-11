@@ -1,0 +1,39 @@
+# Utiliza una imagen base oficial de Ubuntu
+FROM ubuntu:20.04
+
+# Establece el directorio de trabajo
+WORKDIR /app
+
+# Configura las variables de entorno para evitar preguntas interactivas durante la instalación
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Actualiza el sistema e instala dependencias necesarias
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    wget \
+    unzip
+
+# Instala Flask, Celery y Pika
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copia el resto de la aplicación
+COPY . .
+
+# Copia el archivo de Matlab Runtime al contenedor
+COPY static/MATLAB_Runtime_R2023b_Update_8_glnxa64.zip /tmp/matlab_runtime.zip
+
+# Instala Matlab Runtime
+RUN unzip /tmp/matlab_runtime.zip -d /tmp/matlab_runtime && \
+    /tmp/matlab_runtime/install -mode silent -agreeToLicense yes && \
+    rm -rf /tmp/matlab_runtime.zip /tmp/matlab_runtime
+
+# Elimina el archivo de Matlab Runtime después de la instalación
+RUN rm -f /tmp/matlab_runtime.zip
+
+# Expone el puerto 5000 para Flask
+EXPOSE 5000
+
+# Define el comando por defecto para ejecutar Flask
+CMD ["flask", "run", "--host=0.0.0.0"]
