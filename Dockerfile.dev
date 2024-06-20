@@ -67,4 +67,4 @@ RUN unzip /tmp/matlab_runtime.zip -d /tmp/matlab_runtime && \
 EXPOSE 5000
 
 # Define el comando por defecto para ejecutar Flask
-CMD ["flask", "run", "--host=0.0.0.0"]
+CMD ["bash", "-c", "flask run & celery -A app.celery worker --loglevel=info"]
