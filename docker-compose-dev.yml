@@ -20,13 +20,4 @@ services:
     environment:
       - FLASK_APP=app.py
       - FLASK_RUN_HOST=0.0.0.0
-
-  worker:
-    build: 
-      context: .
-      dockerfile: Dockerfile.dev
-    command: celery -A app.celery worker --loglevel=info
-    volumes:
-      - .:/app
-    depends_on:
-      - rabbitmq
+    command: bash -c "flask run & celery -A app.celery worker --loglevel=info"
