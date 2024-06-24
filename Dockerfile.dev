@@ -1,5 +1,5 @@
 # Utiliza una imagen base oficial de Ubuntu
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 # Configura las variables de entorno para el idioma español
 ENV LANG=es_ES.UTF-8
@@ -50,12 +50,11 @@ RUN unzip /tmp/matlab_runtime.zip -d /tmp/matlab_runtime && \
     rm -rf /tmp/matlab_runtime.zip /tmp/matlab_runtime
 
 # Copia el código de TNC Project al contenedor
-#COPY TNCPROJECT.zip /tmp/tnc_project.zip
+COPY TNCPROJECT.zip /tmp/tnc_project.zip
 
 # Instala TNC Project
-#RUN unzip /tmp/tnc_project.zip -d /usr/src/ && \
- #   chmod -R 777 /usr/src/TNCPROJECT && \
-  #  chmod -R 777 /usr/local/MATLAB
+RUN unzip /tmp/tnc_project.zip -d /usr/src/ && \
+     chmod -R 777 /usr/src/TNCPROJECT
 
 # Configura la variable de entorno para MATLAB Runtime
 #ENV LD_LIBRARY_PATH=/usr/local/MATLAB/MATLAB_Runtime/R2023b/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/R2023b/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/R2023b/sys/os/glnxa64:$LD_LIBRARY_PATH

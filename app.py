@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from celery import Celery, chain
 import csv
 import os
-import logging
 
 app = Flask(__name__)
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@rabbitmq//'
@@ -10,10 +9,6 @@ app.config['CELERY_RESULT_BACKEND'] = 'rpc://'
 
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def create_csv(data_list, csv_file_path):
     if not data_list:
@@ -34,8 +29,8 @@ def create_csv(data_list, csv_file_path):
             writer.writerow(row)
 
 @celery.task
-def create_csv_barriers(input_json, output_folder):
-    logger.info('create_csv_barriers: Started')
+def create_csv_barriers_task(data_json, output_folder):
+    input_json = data_json
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
@@ -52,12 +47,11 @@ def create_csv_barriers(input_json, output_folder):
             barrier_total.append(cuenca_in)
     
     create_csv(barrier_total, os.path.join(output_folder, "Barriers.csv"))
-    logger.info('create_csv_barriers: Completed')
-    return f"Barriers.csv creado en '{output_folder}'"
+    return data_json
 
 @celery.task
-def create_csv_WaterCatchments(input_json, output_folder):
-    logger.info('create_csv_WaterCatchments: Started')
+def create_csv_WaterCatchments_task(data_json, output_folder):
+    input_json = data_json
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -75,12 +69,11 @@ def create_csv_WaterCatchments(input_json, output_folder):
             water_total.append(water_in)
     
     create_csv(water_total, os.path.join(output_folder, "WaterCatchments.csv"))
-    logger.info('create_csv_WaterCatchments: Completed')
-    return f"WaterCatchments.csv creado en '{output_folder}'"
+    return data_json
 
 @celery.task
-def create_csv_Pouring(input_json, output_folder):
-    logger.info('create_csv_Pouring: Started')
+def create_csv_Pouring_task(data_json, output_folder):
+    input_json = data_json
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -107,22 +100,21 @@ def create_csv_Pouring(input_json, output_folder):
             vertiment_total.append(vertiment_in)
     
     create_csv(vertiment_total, os.path.join(output_folder, "Dumpings.csv"))
-    logger.info('create_csv_Pouring: Completed')
-    return f"Dumpings.csv creado en '{output_folder}'"
+    return data_json
 
 @celery.task
-def create_csv_basin(input_json, output_folder):
-    logger.info('create_csv_basin: Started')
+def create_csv_basin_task(data_json, output_folder):
+    input_json = data_json
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
     basin_total = []
-    for basin in input_json:
-        coverage = input_json[basin]["coverage"]
-        pecuaria = input_json[basin]["pecuaria"]
-        minera = input_json[basin]["minera"]
-        population = input_json[basin]["population"]
-        estresores = input_json[basin]["estresores"]
+    for basin, basin_data in input_json.items():
+        coverage = basin_data.get("coverage", [])
+        pecuaria = basin_data.get("pecuaria", [])
+        minera = basin_data.get("minera", [])
+        population = basin_data.get("population", [])
+        estresores = basin_data.get("estresores", [])
         
         headers = {'Codigo Microcuenca': basin}
         
@@ -139,21 +131,18 @@ def create_csv_basin(input_json, output_folder):
         basin_total.append(headers)
     
     create_csv(basin_total, os.path.join(output_folder, "BasinData.csv"))
-    logger.info('create_csv_basin: Completed')
-    return f"BasinData.csv creado en '{output_folder}'"
+    return data_json
 
 @celery.task
 def generate_csv_all(data_json, output_folder):
-    logger.info('generate_csv_all: Started')
     task_chain = chain(
-        create_csv_barriers.s(data_json, output_folder),
-        create_csv_WaterCatchments.s(data_json, output_folder),
-        create_csv_Pouring.s(data_json, output_folder),
-        create_csv_basin.s(data_json, output_folder)
+        create_csv_barriers_task.s(data_json, output_folder),
+        create_csv_WaterCatchments_task.s(output_folder),
+        create_csv_Pouring_task.s(output_folder),
+        create_csv_basin_task.s(output_folder)
     )
-    result = task_chain.apply_async()
-    logger.info('generate_csv_all: Chain created and tasks applied asynchronously')
-    return result.id
+    result = task_chain()
+    return result
 
 @app.route('/process_json', methods=['POST'])
 def process_json():
