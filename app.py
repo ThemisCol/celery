@@ -17,10 +17,10 @@ app.config['CELERY_RESULT_BACKEND'] = 'rpc://'
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
 
-smtp_server = 'smtp.office365.com'
+smtp_server = ''
 smtp_port = 587 
-smtp_user = 'sima@tnc.org'
-smtp_password = '@p8RK2tJS'
+smtp_user = ''
+smtp_password = ''
 
 logging.basicConfig(level=logging.INFO)
 
