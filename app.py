@@ -369,15 +369,15 @@ def runMathLab():
 @celery.task
 def processAnalysis(data, timestamp):
     # 1. SendEmail Queue Start
-    sendEmailQueueStart(data['correo'], timestamp)
+    sendEmailQueueStart(data['email'], timestamp)
     # 2. Generate Folder and Control File
     output_folder = preparteData(timestamp)
     # 3. Generate CSV
     generateCSV(data, output_folder)
     # 4. MathLab Process
-    # runMathLab()
+    runMathLab()
     # 5. SendEmail End Task
-    sendEmailEndTask(data['correo'], timestamp)
+    sendEmailEndTask(data['email'], timestamp)
 
 def get_task_stats_total(inspect_result):
     if not inspect_result:
@@ -453,7 +453,7 @@ def process_json():
     data = request.get_json()
     timestamp = datetime.now().strftime('%Y-%m-%d_%H:%M')
     # 1. SendEmail Task
-    sendEmailOne(data['correo'], timestamp)
+    sendEmailOne(data['email'], timestamp)
     # 2. SendEmail Queue
     # ....
     # 3. Init Task
