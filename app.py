@@ -15,8 +15,9 @@ app.config['CELERY_BROKER_URL'] = 'amqp://guest@rabbitmq//'
 app.config['CELERY_RESULT_BACKEND'] = 'rpc://'
 
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+#celery.conf.worker_max_concurrency = 1
+#celery.conf.worker_concurrency = 1  
 celery.conf.update(app.config)
-
 logging.basicConfig(level=logging.INFO)
 
 def createEmailTemplate(subject, content):
@@ -374,9 +375,39 @@ def processAnalysis(data, timestamp):
     # 3. Generate CSV
     generateCSV(data, output_folder)
     # 4. MathLab Process
-    runMathLab()
+    # runMathLab()
     # 5. SendEmail End Task
     sendEmailEndTask(data['correo'], timestamp)
+
+def get_task_stats_total(inspect_result):
+    if not inspect_result:
+        return 0
+    return sum(len(tasks) for tasks in inspect_result.values())
+
+def get_task_stats(inspect_result):
+    if not inspect_result:
+        return {"count": 0, "tasks": {}}
+    total_count = sum(len(tasks) for tasks in inspect_result.values())
+    return {"count": total_count, "tasks": inspect_result}
+
+@celery.task
+def worker_statusTask():
+    active_tasks = celery.control.inspect().active()
+    reserved_tasks = celery.control.inspect().reserved()
+    scheduled_tasks = celery.control.inspect().scheduled()
+
+    total_active = get_task_stats_total(active_tasks)
+    total_reserved = get_task_stats_total(reserved_tasks)
+    total_scheduled = get_task_stats_total(scheduled_tasks)
+
+    total = total_active + total_reserved + total_scheduled
+
+    return {
+        "total": total,
+        "active_tasks": get_task_stats(active_tasks),
+        "reserved_tasks": get_task_stats(reserved_tasks),
+        "scheduled_tasks": get_task_stats(scheduled_tasks)
+    }
 
 def preparteData(timestamp):
     base_output_folder = "/usr/src/TNCPROJECT/SIMA-PROJECT/UserData"  
@@ -435,6 +466,12 @@ def serve_file(filename):
     directory = '/usr/src/TNCPROJECT/SIMA-PROJECT/WSI-SIMA/'
     output_folder = directory + filename
     return send_from_directory(output_folder, find_file(output_folder, name_full))
+
+@app.route("/worker_status", methods=['GET'])
+def worker_status():
+    status = worker_statusTask()
+    return jsonify(status)
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

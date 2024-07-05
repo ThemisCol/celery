@@ -22,7 +22,7 @@ services:
     environment:
       - FLASK_APP=app.py
       - FLASK_RUN_HOST=0.0.0.0
-    command: bash -c "flask run & celery -A app.celery worker --loglevel=info"
+    command: bash -c "flask run & celery --concurrency=1 -A app.celery worker --loglevel=info"
 
 volumes:
   rabbitmq_data:
