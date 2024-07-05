@@ -9,6 +9,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import sys
 import glob
+from django.utils import timezone
+
 
 app = Flask(__name__)
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@rabbitmq//'
@@ -23,6 +25,8 @@ smtp_user = 'sima@tnc.org'
 smtp_password = '@p8RK2tJS'
 
 logging.basicConfig(level=logging.INFO)
+
+
 
 def sendEmailOne(to, name):
     msg = MIMEMultipart()
@@ -96,6 +100,152 @@ def sendEmailOne(to, name):
     
     sendEmail(msg)
 
+def sendEmailEndTask(to, name, output_folder):
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user
+    msg['To'] = to
+    msg['Subject'] = 'Finalización del análisis ' + name
+    
+    body = f"""
+    <html>
+    <head>
+    <style>
+    .email-container {{
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        padding: 20px;
+    }}
+    .email-content {{
+        background-color: #ffffff;
+        margin-top: 10px;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }}
+    .email-footer {{
+        margin-top: 20px;
+        font-size: 12px;
+        color: #888888;
+    }}
+    .left {{
+        float: left;
+        width: auto;
+        margin-right: 5%;
+    }}
+    .right {{
+        float: right;
+         width: auto;
+        margin-left: 5%;
+    }}
+     .clear {{
+        clear: both;
+    }}
+    .content {{
+        display: block;
+        clear: both;
+        margin-top: 20px;
+    }}
+    </style>
+    </head>
+    <body>
+    <div class="email-container">
+        <div class="email-content">
+            <div>
+                <img src="https://sima-dss.net/sites/default/files/styles/panopoly_image_original/public/logo-2%20%282%29.png" height="70" class="left">
+                <img src="https://www.maps.tnc.org/nasca-dashboard/img/tnc-logo-light.1bb4846e.png" height="70" class="right">
+            </div>
+            <div class="clear"></div>
+            <div class="content">
+                <h1>Asistente de cálculo del índice de sostenibilidad</h1>
+                <p>El análisis ha finalizado exitosamente. Los archivos CSV generados se encuentran en la carpeta: {output_folder}</p>
+                <p>Gracias por utilizar nuestro servicio.</p>
+            </div>
+        </div>
+        <div class="email-footer">
+            El contenido de este correo y toda la información que contiene es confidencial y está protegido por las leyes de derechos de autor. Si usted no es el destinatario autorizado, por favor notifique al remitente y elimine cualquier copia de este mensaje y sus archivos adjuntos. Gracias.
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+    msg.attach(MIMEText(body, 'html'))
+    
+    sendEmail(msg)
+
+
+def sendEmailQueueStart(to, name, timestamp):
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user
+    msg['To'] = to
+    msg['Subject'] = 'Inicio de procesamiento de solicitud de análisis ' + name
+    
+    body = f"""
+    <html>
+    <head>
+    <style>
+    .email-container {{
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        padding: 20px;
+    }}
+    .email-content {{
+        background-color: #ffffff;
+        margin-top: 10px;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }}
+    .email-footer {{
+        margin-top: 20px;
+        font-size: 12px;
+        color: #888888;
+    }}
+    .left {{
+        float: left;
+        width: auto;
+        margin-right: 5%;
+    }}
+    .right {{
+        float: right;
+         width: auto;
+        margin-left: 5%;
+    }}
+     .clear {{
+        clear: both;
+    }}
+    .content {{
+        display: block;
+        clear: both;
+        margin-top: 20px;
+    }}
+    </style>
+    </head>
+    <body>
+    <div class="email-container">
+        <div class="email-content">
+            <div>
+                <img src="https://sima-dss.net/sites/default/files/styles/panopoly_image_original/public/logo-2%20%282%29.png" height="70" class="left">
+                <img src="https://www.maps.tnc.org/nasca-dashboard/img/tnc-logo-light.1bb4846e.png" height="70" class="right">
+            </div>
+            <div class="clear"></div>
+            <div class="content">
+                <h1>Asistente de cálculo del índice de sostenibilidad</h1>
+                <p>Su solicitud de análisis ha sido recibida y el procesamiento ha comenzado. Fecha y hora de inicio: {timestamp}</p>
+                <p>Le notificaremos una vez que el análisis haya finalizado.</p>
+            </div>
+        </div>
+        <div class="email-footer">
+            El contenido de este correo y toda la información que contiene es confidencial y está protegido por las leyes de derechos de autor. Si usted no es el destinatario autorizado, por favor notifique al remitente y elimine cualquier copia de este mensaje y sus archivos adjuntos. Gracias.
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+    msg.attach(MIMEText(body, 'html'))
+    
+    sendEmail(msg)
+
+
 def sendEmail(msg):
     try:
         server = smtplib.SMTP(smtp_server, smtp_port)
@@ -155,6 +305,14 @@ def create_csv_barriers(data_json, output_folder):
                 'Latitud': barrier.get("lat", ""),
             }
             barrier_total.append(cuenca_in)
+        
+        # Agregar una fila vacía entre los bloques de datos de diferentes microcuencas
+        barrier_total.append({
+            'Codigo Microcuenca': '',
+            'Nombre': '',
+            'Longitud': '',
+            'Latitud': '',
+        })
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -162,8 +320,16 @@ def create_csv_barriers(data_json, output_folder):
 
     csv_file_path = os.path.join(output_folder, "Barriers.csv")
     logging.info(f"Creating CSV file at: {csv_file_path}")
-    create_csv(barrier_total, csv_file_path)
 
+    with open(csv_file_path, mode='w', newline='') as csv_file:
+        fieldnames = ['Codigo Microcuenca', 'Nombre', 'Longitud', 'Latitud']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for row in barrier_total:
+            writer.writerow(row)
+
+    logging.info("CSV file created successfully")
     return data_json
 
 def create_csv_WaterCatchments(input_json, output_folder):
@@ -178,7 +344,7 @@ def create_csv_WaterCatchments(input_json, output_folder):
         logging.info(f"Created directory: {output_folder}")
 
     water_catchments_total = []
-    for collection_key, collection_data in input_json.items():
+    for collection_key, collection_data in input_json.get("data", {}).items():
         if isinstance(collection_data, dict):
             pointer_collection = collection_data.get("pointerCollection", [])
             for water in pointer_collection:
@@ -199,55 +365,61 @@ def create_csv_WaterCatchments(input_json, output_folder):
 
     return input_json
 
-
 def create_csv_Pouring(data_json, output_folder):
     logging.info(f"create_csv_Pouring_task: output_folder = {output_folder}")
-    try:
-        input_json = data_json
-        if not isinstance(input_json, dict):
-            logging.error("Input JSON is not a dictionary.")
-            raise ValueError("El JSON de entrada debe ser un diccionario.")
 
-        # Continue processing as usual
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
-            logging.info(f"Created directory: {output_folder}")
+    if "data" not in data_json or not isinstance(data_json["data"], dict):
+        logging.error("El JSON de entrada debe contener la clave 'data' como un diccionario.")
+        raise ValueError("El JSON de entrada debe contener la clave 'data' como un diccionario.")
 
-        vertiment_total = []
-        for pouring in input_json:
-            if isinstance(input_json[pouring], dict):
-                pointer_pouring = input_json[pouring].get("pointerPouring", [])
-                for vertiment in pointer_pouring:
-                    vertiment_in = {
-                        'Codigo Microcuenca': pouring,
-                        'Determinante': vertiment.get("name", ""),
-                        'Longitud': vertiment.get("lng", ""),
-                        'Latitud': vertiment.get("lat", ""),
-                        'Caudal (m3/s)': vertiment.get("cau", ""),
-                        'Solidos Suspendidos Totales (mg/l)': vertiment["data"].get("sst", ""),
-                        'Coliformes Totales (NPM/100ml)': vertiment["data"].get("coliformes_totales", ""),
-                        'Fosforo Organico (mg/l)': vertiment["data"].get("fosforo_organico", ""),
-                        'Fosforo Inorganico (mg/l)': vertiment["data"].get("fosforo_inorganico", ""),
-                        'Nitrogeno Organico (mg/l)': vertiment["data"].get("nitrogeno_organico", ""),
-                        'Nitrogeno Amonical (mg/l)': vertiment["data"].get("nitrogeno_amoniacal", ""),
-                        'Nitratos (mg/l)': vertiment["data"].get("nitratos", ""),
-                        'DBO5 (mg/l)': vertiment["data"].get("dbo5", ""),
-                        'Mercurio total (mg/l)': vertiment["data"].get("mercurio_total", ""),       
-                    }
-                    vertiment_total.append(vertiment_in)
-            else:
-                logging.warning(f"Skipping invalid data for pouring: {pouring}")
+    input_json = data_json["data"]
 
-        csv_file_path = os.path.join(output_folder, "Dumpings.csv")
-        logging.info(f"Creating CSV file at: {csv_file_path}")
-        create_csv(vertiment_total, csv_file_path)
-        return data_json
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+        logging.info(f"Created directory: {output_folder}")
+
+    vertiment_total = []
+    for pouring in input_json:
+        if isinstance(input_json[pouring], dict):
+            pointer_pouring = input_json[pouring].get("pointerPouring", [])
+            for vertiment in pointer_pouring:
+                vertiment_in = {
+                    'Codigo Microcuenca': pouring,
+                    'Determinante': vertiment.get("name", ""),
+                    'Longitud': vertiment.get("lng", ""),
+                    'Latitud': vertiment.get("lat", ""),
+                    'Caudal (m3/s)': vertiment.get("cau", ""),
+                    'Solidos Suspendidos Totales (mg/l)': vertiment["data"].get("sst", ""),
+                    'Coliformes Totales (NPM/100ml)': vertiment["data"].get("coliformes_totales", ""),
+                    'Fosforo Organico (mg/l)': vertiment["data"].get("fosforo_organico", ""),
+                    'Fosforo Inorganico (mg/l)': vertiment["data"].get("fosforo_inorganico", ""),
+                    'Nitrogeno Organico (mg/l)': vertiment["data"].get("nitrogeno_organico", ""),
+                    'Nitrogeno Amonical (mg/l)': vertiment["data"].get("nitrogeno_amoniacal", ""),
+                    'Nitratos (mg/l)': vertiment["data"].get("nitratos", ""),
+                    'DBO5 (mg/l)': vertiment["data"].get("dbo5", ""),
+                    'Mercurio total (mg/l)': vertiment["data"].get("mercurio_total", ""),       
+                }
+                vertiment_total.append(vertiment_in)
+        else:
+            logging.warning(f"Skipping invalid data for pouring: {pouring}")
+
+    csv_file_path = os.path.join(output_folder, "Dumpings.csv")
+    logging.info(f"Creating CSV file at: {csv_file_path}")
+    create_csv(vertiment_total, csv_file_path)
+
+    return data_json
+
+def create_csv(data, csv_file_path):
+    if not data:
+        logging.error("No data to write to CSV.")
+        return
     
-    except Exception as e:
-        logging.error(f"Error processing JSON: {str(e)}")
-        raise
-
-
+    keys = data[0].keys()
+    with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=keys)
+        writer.writeheader()
+        writer.writerows(data)
+    logging.info(f"CSV file created at {csv_file_path}")
 
 def create_csv_basin(data_json, output_folder):
     logging.info(f"create_csv_basin_task: output_folder = {output_folder}")
@@ -257,6 +429,28 @@ def create_csv_basin(data_json, output_folder):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
         logging.info(f"Created directory: {output_folder}")
+
+    # Define the desired headers for the CSV
+    csv_headers = [
+        "Codigo Microcuenca", "Zonas Urbanas (Corine - 11)", "Zonas Industriales (Corine - 12)",
+        "Zonas de Mineria (Corine - 13)", "Zonas Verdes Artificiale (Corine - 14)",
+        "Cultivo - Otros Transitorios (Corine - )", "Cultivo - Cereales", "Cultivo - Herbaceos",
+        "Cultivo - Arbustivos", "Cultivo - Arboreos", "Cultivo - Agroforestales", "Cultivo - Arroz",
+        "Cultivo - Maiz", "Cultivo - Sorgo", "Cultivo - Soya", "Cultivo - Cebolla", "Cultivo - Papa",
+        "Cultivo - Otros Permanentes Herbaceos", "Cultivo - Caña", "Cultivo - Cacao",
+        "Cultivo - Otros Permanentes Arboreos", "Cultivo - Palma", "Cultivo - Pastos y Arboles Plantados",
+        "Cultivo - Arboles Plantados", "Pastos (Corine - 23)", "Areas Agricolas Heterogeneos (Corine - 24)",
+        "Bosques (Corine - 31)", "Vegetación Herbacea (Corine - 32)", "Areas Abiertas Poca Vegetación (Corine - 33)",
+        "Areas Humedas (Corine - 41)", "Agua (Corine - 51)", "Número de bovinos ( < 12 meses)",
+        "Número de bovinos ( <= 12 a 24 meses)", "Número de bovinos ( <= 24 a 36 meses)", "Número de bovinos ( > 36 meses)",
+        "Número de aves de engorde", "Número de aves de levante", "Número de aves de postura",
+        "Número de aves de transpatio", "Número de aves genético", "Número de porcinos",
+        "Producción de arcilla micelanea (m³)", "Producción de arena de río (m³)", "Producción de arena silicea (m³)",
+        "Producción de grava de río (m³)", "Producción de carbon (toneladas)", "Producción de yeso (toneladas)",
+        "Producción de hierro (toneladas)", "Número de barriles de petroleo", "Número de habitantes",
+        "Número de pozos petroleros", "Área de titulos mineros (ha) -Max (9865 ha)", "Longitud de vías (km)",
+        "Área quemadas (ha) -Max (9865 ha)", "Área de humedales transformados - Max (2000 ha)"
+    ]
 
     basin_total = []
     
@@ -270,40 +464,42 @@ def create_csv_basin(data_json, output_folder):
         headers = {'Codigo Microcuenca': basin}
         
         for cobe in coverage:
-            headers.update({cobe["name"]: cobe["escA"]})
+            headers[cobe["name"]] = cobe["escA"]
         for cobe in pecuaria:
-            headers.update({cobe["name"]: cobe["pecB"]})
+            headers[cobe["name"]] = cobe["pecB"]
         for cobe in minera:
-            headers.update({cobe["name"]: cobe["minB"]})
+            headers[cobe["name"]] = cobe["minB"]
         for cobe in population:
-            headers.update({cobe["name"]: cobe["popB"]})
+            headers[cobe["name"]] = cobe["popB"]
         for cobe in estresores:
-            headers.update({cobe["name"]: cobe["estB"]})
+            headers[cobe["name"]] = cobe["estB"]
         
         basin_total.append(headers)
-    
+
+    # Ensure all headers are present in each dictionary
+    for basin_data in basin_total:
+        for header in csv_headers:
+            if header not in basin_data:
+                basin_data[header] = 0  # or any default value you prefer
+
     csv_file_path = os.path.join(output_folder, "BasinData.csv")
     logging.info(f"Creating CSV file at: {csv_file_path}")
-    create_csv(basin_total, csv_file_path)  # Asume que tienes una función 'create_csv' definida correctamente
+    create_csv(basin_total, csv_file_path)  
     
     return data_json
 
-
 @celery.task
-def processAnalysis(data):
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H:%M')
-    # 1. SendEmail Task
-    sendEmailOne(data['correo'], timestamp)
-    # 2. SendEmail Queue
-    # ....
-    # 3. Generate Folder and Control File
+def processAnalysis(data, timestamp):
+    # 1. SendEmail Queue Start
+    sendEmailQueueStart(data['correo'], timestamp, timestamp)
+    # 2. Generate Folder and Control File
     output_folder = preparteData(timestamp)
-    # 4. Generate CSV
+    # 3. Generate CSV
     generateCSV(data, output_folder)
-    # 5. MathLab Process
+    # 4. MathLab Process
     # ....
-    # 6. SendEmail End Task
-    # ....
+    # 5. SendEmail End Task
+    sendEmailEndTask(data['correo'], timestamp, output_folder)
 
 def preparteData(timestamp):
     base_output_folder = "/usr/src/TNCPROJECT/SIMA-PROJECT/UserData"  
@@ -342,7 +538,13 @@ def generateCSV(data_json, output_folder):
 @app.route('/process_json', methods=['POST'])
 def process_json():
     data = request.get_json()
-    task = processAnalysis.delay(data)
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H:%M')
+    # 1. SendEmail Task
+    sendEmailOne(data['correo'], timestamp)
+    # 2. SendEmail Queue
+    # ....
+    # 3. Init Task
+    task = processAnalysis.delay(data, timestamp)
     return jsonify({"task_id": task.id}), 202
 
 if __name__ == '__main__':
