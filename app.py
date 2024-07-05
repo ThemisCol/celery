@@ -19,51 +19,50 @@ celery.conf.update(app.config)
 
 logging.basicConfig(level=logging.INFO)
 
-def sendEmailOne(to, name):
+def createEmailTemplate(subject, content):
     msg = MIMEMultipart()
     msg['From'] = smtp_user
-    msg['To'] = to
-    msg['Subject'] = 'Recepción de solicitud de análisis ' + name
-    
-    body = """
+    msg['Subject'] = subject
+
+    body = f"""
     <html>
     <head>
     <style>
-    .email-container {
+    .email-container {{
         font-family: Arial, sans-serif;
         background-color: #f4f4f4;
         padding: 20px;
-    }
-    .email-content {
+    }}
+    .email-content {{
         background-color: #ffffff;
         margin-top: 10px;
         padding: 20px;
         border-radius: 10px;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .email-footer {
+    }}
+    .email-footer {{
         margin-top: 20px;
         font-size: 12px;
         color: #888888;
-    }
-    .left {
+    }}
+    .left {{
         float: left;
         width: auto;
         margin-right: 5%;
-    }
-    .right {
+    }}
+    .right {{
         float: right;
-         width: auto;
+        width: auto;
         margin-left: 5%;
-    }
-     .clear {
+    }}
+    .clear {{
         clear: both;
-    }
-    .content {
+    }}
+    .content {{
         display: block;
         clear: both;
         margin-top: 20px;
-    }
+    }}
     </style>
     </head>
     <body>
@@ -76,8 +75,7 @@ def sendEmailOne(to, name):
             <div class="clear"></div>
             <div class="content">
                 <h1>Asistente de cálculo del índice de sostenibilidad</h1>
-                <p>Se ha recibido su solicitud para el análisis. En breve, iniciaremos el proceso de modelación basado en los datos proporcionados.</p>
-                <p>Le mantendremos informado sobre cualquier avance. </p>
+                {content}
             </div>
         </div>
         <div class="email-footer">
@@ -88,151 +86,36 @@ def sendEmailOne(to, name):
     </html>
     """
     msg.attach(MIMEText(body, 'html'))
-    
+    return msg
+
+def sendEmailOne(to, name):
+    subject = f'Recepción de solicitud de análisis {name}'
+    content = """
+        <p>Se ha recibido su solicitud para el análisis. En breve, iniciaremos el proceso de modelación basado en los datos proporcionados.</p>
+        <p>Le mantendremos informado sobre cualquier avance.</p>
+    """
+    msg = createEmailTemplate(subject, content)
+    msg['To'] = to
     sendEmail(msg)
 
 def sendEmailEndTask(to, name):
-    msg = MIMEMultipart()
-    msg['From'] = smtp_user
-    msg['To'] = to
-    msg['Subject'] = 'Finalización del análisis ' + name
-    
-    body = f"""
-    <html>
-    <head>
-    <style>
-    .email-container {{
-        font-family: Arial, sans-serif;
-        background-color: #f4f4f4;
-        padding: 20px;
-    }}
-    .email-content {{
-        background-color: #ffffff;
-        margin-top: 10px;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }}
-    .email-footer {{
-        margin-top: 20px;
-        font-size: 12px;
-        color: #888888;
-    }}
-    .left {{
-        float: left;
-        width: auto;
-        margin-right: 5%;
-    }}
-    .right {{
-        float: right;
-         width: auto;
-        margin-left: 5%;
-    }}
-     .clear {{
-        clear: both;
-    }}
-    .content {{
-        display: block;
-        clear: both;
-        margin-top: 20px;
-    }}
-    </style>
-    </head>
-    <body>
-    <div class="email-container">
-        <div class="email-content">
-            <div>
-                <img src="https://sima-dss.net/sites/default/files/styles/panopoly_image_original/public/logo-2%20%282%29.png" height="70" class="left">
-                <img src="https://www.maps.tnc.org/nasca-dashboard/img/tnc-logo-light.1bb4846e.png" height="70" class="right">
-            </div>
-            <div class="clear"></div>
-            <div class="content">
-                <h1>Asistente de cálculo del índice de sostenibilidad</h1>
-                <p>El análisis ha finalizado exitosamente. Los resultados los podra encontrar haciendo: <a href="{api+name}>click aquí</a></p>
-                <p>Gracias por utilizar nuestro servicio.</p>
-            </div>
-        </div>
-        <div class="email-footer">
-            El contenido de este correo y toda la información que contiene es confidencial y está protegido por las leyes de derechos de autor. Si usted no es el destinatario autorizado, por favor notifique al remitente y elimine cualquier copia de este mensaje y sus archivos adjuntos. Gracias.
-        </div>
-    </div>
-    </body>
-    </html>
+    subject = f'Finalización del análisis {name}'
+    content = f"""
+        <p>El análisis ha finalizado exitosamente. Los resultados los podra encontrar haciendo: <a href="{api + name}">click aquí</a></p>
+        <p>Gracias por utilizar nuestro servicio.</p>
     """
-    msg.attach(MIMEText(body, 'html'))
-    
+    msg = createEmailTemplate(subject, content)
+    msg['To'] = to
     sendEmail(msg)
 
-def sendEmailQueueStart(to, name, timestamp):
-    msg = MIMEMultipart()
-    msg['From'] = smtp_user
-    msg['To'] = to
-    msg['Subject'] = 'Inicio de procesamiento de solicitud de análisis ' + name
-    
-    body = f"""
-    <html>
-    <head>
-    <style>
-    .email-container {{
-        font-family: Arial, sans-serif;
-        background-color: #f4f4f4;
-        padding: 20px;
-    }}
-    .email-content {{
-        background-color: #ffffff;
-        margin-top: 10px;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }}
-    .email-footer {{
-        margin-top: 20px;
-        font-size: 12px;
-        color: #888888;
-    }}
-    .left {{
-        float: left;
-        width: auto;
-        margin-right: 5%;
-    }}
-    .right {{
-        float: right;
-         width: auto;
-        margin-left: 5%;
-    }}
-     .clear {{
-        clear: both;
-    }}
-    .content {{
-        display: block;
-        clear: both;
-        margin-top: 20px;
-    }}
-    </style>
-    </head>
-    <body>
-    <div class="email-container">
-        <div class="email-content">
-            <div>
-                <img src="https://sima-dss.net/sites/default/files/styles/panopoly_image_original/public/logo-2%20%282%29.png" height="70" class="left">
-                <img src="https://www.maps.tnc.org/nasca-dashboard/img/tnc-logo-light.1bb4846e.png" height="70" class="right">
-            </div>
-            <div class="clear"></div>
-            <div class="content">
-                <h1>Asistente de cálculo del índice de sostenibilidad</h1>
-                <p>Su solicitud de análisis ha sido recibida y el procesamiento ha comenzado. Fecha y hora de inicio: {timestamp}</p>
-                <p>Le notificaremos una vez que el análisis haya finalizado.</p>
-            </div>
-        </div>
-        <div class="email-footer">
-            El contenido de este correo y toda la información que contiene es confidencial y está protegido por las leyes de derechos de autor. Si usted no es el destinatario autorizado, por favor notifique al remitente y elimine cualquier copia de este mensaje y sus archivos adjuntos. Gracias.
-        </div>
-    </div>
-    </body>
-    </html>
+def sendEmailQueueStart(to, name):
+    subject = f'Inicio de procesamiento de solicitud de análisis {name}'
+    content = f"""
+        <p>Su solicitud de análisis ha sido recibida y el procesamiento ha comenzado. Fecha y hora de inicio: {name}</p>
+        <p>Le notificaremos una vez que el análisis haya finalizado.</p>
     """
-    msg.attach(MIMEText(body, 'html'))
-    
+    msg = createEmailTemplate(subject, content)
+    msg['To'] = to
     sendEmail(msg)
 
 def sendEmail(msg):
@@ -477,16 +360,21 @@ def create_csv_basin(data_json, output_folder):
     
     return data_json
 
+def runMathLab():
+    directory = '/usr/src/TNCPROJECT/Adapter_MATLAB'
+    command = "sh run_Adapter_WSI_SIMA.sh /usr/local/MATLAB/MATLAB_Runtime/R2023b"
+    os.system(f"cd {directory} && {command}")
+
 @celery.task
 def processAnalysis(data, timestamp):
     # 1. SendEmail Queue Start
-    #sendEmailQueueStart(data['correo'], timestamp, timestamp)
+    sendEmailQueueStart(data['correo'], timestamp)
     # 2. Generate Folder and Control File
-    #output_folder = preparteData(timestamp)
+    output_folder = preparteData(timestamp)
     # 3. Generate CSV
-    #generateCSV(data, output_folder)
+    generateCSV(data, output_folder)
     # 4. MathLab Process
-    # ....
+    runMathLab()
     # 5. SendEmail End Task
     sendEmailEndTask(data['correo'], timestamp)
 
@@ -546,7 +434,6 @@ def serve_file(filename):
     name_full = 'Logger_UserData'
     directory = '/usr/src/TNCPROJECT/SIMA-PROJECT/WSI-SIMA/'
     output_folder = directory + filename
-    logging.info(f"CSV file created at {find_file(output_folder, name_full)}")
     return send_from_directory(output_folder, find_file(output_folder, name_full))
 
 if __name__ == '__main__':
