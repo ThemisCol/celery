@@ -1,5 +1,5 @@
-from flask import Flask, request, jsonify
-from celery import Celery, chain
+from flask import Flask, request, jsonify, send_from_directory
+from celery import Celery
 import csv
 import os
 import logging
@@ -7,10 +7,8 @@ from datetime import datetime
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import sys
 import glob
-from django.utils import timezone
-
+from env import smtp_password, smtp_port, smtp_server, smtp_user, api
 
 app = Flask(__name__)
 app.config['CELERY_BROKER_URL'] = 'amqp://guest@rabbitmq//'
@@ -19,14 +17,7 @@ app.config['CELERY_RESULT_BACKEND'] = 'rpc://'
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
 
-smtp_server = 'smtp.office365.com'
-smtp_port = 587 
-smtp_user = 'sima@tnc.org'
-smtp_password = '@p8RK2tJS'
-
 logging.basicConfig(level=logging.INFO)
-
-
 
 def sendEmailOne(to, name):
     msg = MIMEMultipart()
@@ -100,7 +91,7 @@ def sendEmailOne(to, name):
     
     sendEmail(msg)
 
-def sendEmailEndTask(to, name, output_folder):
+def sendEmailEndTask(to, name):
     msg = MIMEMultipart()
     msg['From'] = smtp_user
     msg['To'] = to
@@ -157,7 +148,7 @@ def sendEmailEndTask(to, name, output_folder):
             <div class="clear"></div>
             <div class="content">
                 <h1>Asistente de cálculo del índice de sostenibilidad</h1>
-                <p>El análisis ha finalizado exitosamente. Los archivos CSV generados se encuentran en la carpeta: {output_folder}</p>
+                <p>El análisis ha finalizado exitosamente. Los resultados los podra encontrar haciendo: <a href="{api+name}>click aquí</a></p>
                 <p>Gracias por utilizar nuestro servicio.</p>
             </div>
         </div>
@@ -171,7 +162,6 @@ def sendEmailEndTask(to, name, output_folder):
     msg.attach(MIMEText(body, 'html'))
     
     sendEmail(msg)
-
 
 def sendEmailQueueStart(to, name, timestamp):
     msg = MIMEMultipart()
@@ -244,7 +234,6 @@ def sendEmailQueueStart(to, name, timestamp):
     msg.attach(MIMEText(body, 'html'))
     
     sendEmail(msg)
-
 
 def sendEmail(msg):
     try:
@@ -491,15 +480,15 @@ def create_csv_basin(data_json, output_folder):
 @celery.task
 def processAnalysis(data, timestamp):
     # 1. SendEmail Queue Start
-    sendEmailQueueStart(data['correo'], timestamp, timestamp)
+    #sendEmailQueueStart(data['correo'], timestamp, timestamp)
     # 2. Generate Folder and Control File
-    output_folder = preparteData(timestamp)
+    #output_folder = preparteData(timestamp)
     # 3. Generate CSV
-    generateCSV(data, output_folder)
+    #generateCSV(data, output_folder)
     # 4. MathLab Process
     # ....
     # 5. SendEmail End Task
-    sendEmailEndTask(data['correo'], timestamp, output_folder)
+    sendEmailEndTask(data['correo'], timestamp)
 
 def preparteData(timestamp):
     base_output_folder = "/usr/src/TNCPROJECT/SIMA-PROJECT/UserData"  
@@ -534,6 +523,11 @@ def generateCSV(data_json, output_folder):
     create_csv_Pouring(data_json, output_folder)
     create_csv_basin(data_json, output_folder)
 
+def find_file(directory, prefix):
+    for file in os.listdir(directory):
+        if file.startswith(prefix):
+            return file
+    return None
 
 @app.route('/process_json', methods=['POST'])
 def process_json():
@@ -546,6 +540,14 @@ def process_json():
     # 3. Init Task
     task = processAnalysis.delay(data, timestamp)
     return jsonify({"task_id": task.id}), 202
+
+@app.route('/files/<path:filename>', methods=['GET'])
+def serve_file(filename):
+    name_full = 'Logger_UserData'
+    directory = '/usr/src/TNCPROJECT/SIMA-PROJECT/WSI-SIMA/'
+    output_folder = directory + filename
+    logging.info(f"CSV file created at {find_file(output_folder, name_full)}")
+    return send_from_directory(output_folder, find_file(output_folder, name_full))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
