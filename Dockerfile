@@ -56,14 +56,8 @@ COPY TNCPROJECT.zip /tmp/tnc_project.zip
 RUN unzip /tmp/tnc_project.zip -d /usr/src/ && \
      chmod -R 777 /usr/src/TNCPROJECT
 
-# Configura la variable de entorno para MATLAB Runtime
-#ENV LD_LIBRARY_PATH=/usr/local/MATLAB/MATLAB_Runtime/R2023b/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/R2023b/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/R2023b/sys/os/glnxa64:$LD_LIBRARY_PATH
-
-# Elimina los archivos de instalación después de la instalación
-#RUN rm -f /tmp/matlab_runtime.zip /tmp/tnc_project.zip /app/MATLAB_Runtime_R2023b_Update_8_glnxa64.zip /app/TNCPROJECT.zip
-
 # Expone el puerto 5000 para Flask
 EXPOSE 5000
 
 # Define el comando por defecto para ejecutar Flask
-CMD ["bash", "-c", "flask run & celery -A app.celery worker --loglevel=info"]
+CMD ["bash", "-c", "flask run & celery -A app.celery worker --loglevel=info --concurrency=1"]

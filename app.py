@@ -314,7 +314,7 @@ def create_csv_basin(data_json, output_folder):
         "Cultivo - Otros Permanentes Arboreos", "Cultivo - Palma", "Cultivo - Pastos y Arboles Plantados",
         "Cultivo - Arboles Plantados", "Pastos (Corine - 23)", "Areas Agricolas Heterogeneos (Corine - 24)",
         "Bosques (Corine - 31)", "Vegetación Herbacea (Corine - 32)", "Areas Abiertas Poca Vegetación (Corine - 33)",
-        "Areas Humedas (Corine - 41)", "Agua (Corine - 51)", "Número de bovinos ( < 12 meses)",
+        "Areas Humedas (Corine - 41)", "Cuerpos de Agua Naturales (Corine - 51)","Cuerpos de Agua Artificiales (Corine - 514)", "Número de bovinos ( < 12 meses)",
         "Número de bovinos ( <= 12 a 24 meses)", "Número de bovinos ( <= 24 a 36 meses)", "Número de bovinos ( > 36 meses)",
         "Número de aves de engorde", "Número de aves de levante", "Número de aves de postura",
         "Número de aves de transpatio", "Número de aves genético", "Número de porcinos",
@@ -375,7 +375,7 @@ def processAnalysis(data, timestamp):
     # 3. Generate CSV
     generateCSV(data, output_folder)
     # 4. MathLab Process
-    runMathLab()
+    # runMathLab()
     # 5. SendEmail End Task
     sendEmailEndTask(data['email'], timestamp)
 
