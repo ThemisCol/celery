@@ -322,7 +322,8 @@ def create_csv_basin(data_json, output_folder):
         "Producción de grava de río (m³)", "Producción de carbon (toneladas)", "Producción de yeso (toneladas)",
         "Producción de hierro (toneladas)", "Número de barriles de petroleo", "Número de habitantes",
         "Número de pozos petroleros", "Área de titulos mineros (ha) -Max (9865 ha)", "Longitud de vías (km)",
-        "Área quemadas (ha) -Max (9865 ha)", "Área de humedales transformados - Max (2000 ha)"
+        "Área quemadas (ha) -Max (9865 ha)", "Área de humedales transformados - Max (2000 ha)", 
+        "Cuerpos de Agua Naturales (Corine - 51)", "Cuerpos de Agua Artificiales (Corine - 514)",
     ]
 
     basin_total = []
@@ -462,10 +463,11 @@ def process_json():
 
 @app.route('/files/<path:filename>', methods=['GET'])
 def serve_file(filename):
-    name_full = 'Logger_UserData'
+    name_full = 'WSI.csv'
+    directory2 = '/WSI/OUTPUTS'
     directory = '/usr/src/TNCPROJECT/SIMA-PROJECT/WSI-SIMA/'
-    output_folder = directory + filename
-    return send_from_directory(output_folder, find_file(output_folder, name_full))
+    output_folder = directory + filename + directory2
+    return send_from_directory(output_folder, name_full)
 
 @app.route("/worker_status", methods=['GET'])
 def worker_status():
